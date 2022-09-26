@@ -56,3 +56,25 @@ func GetCommentsFromPost(ctx context.Context, postId string)([]*model.Comment, e
 	}
 	return comments, nil
 }
+
+func GetReplies(ctx context.Context, commentID string)([]*model.Comment, error){
+	db := database.GetDB()
+	var replies []*model.Comment
+	if err:= db.Limit(-1).Offset(0).Find(&replies,"reply_to_comment_id like ?",commentID).Error; err != nil {
+		return nil, err
+	}
+	return replies, nil
+}
+
+func GetPostByCaption(ctx context.Context, name string, limit int, offset int) ([]*model.Post, error) {
+	db := database.GetDB()
+	if name == "" {
+		name = "%"
+	}
+
+	var posts []*model.Post
+	if err := db.Limit(limit).Offset(offset).Find(&posts, "LOWER(caption) like ?", "%"+strings.ToLower(name)+"%").Error; err != nil {
+		return nil, err
+	}
+	return posts, nil
+}

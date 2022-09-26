@@ -16,6 +16,9 @@ extend type Query{
     generateID: Any!
     getPosts(id: ID!, limit: Int!, offset: Int!): Any!
     getComment(postId: ID!): Any!
+    getLimitComment(postId: ID!): Any!
+    getReply(commentId:ID!):Any!
+    getPost(id:ID!):Any!
 }
 
 extend type Mutation{
@@ -25,4 +28,6 @@ extend type Mutation{
     commentPost(postId: ID!, commenterId: ID!, comment: String!): Any!
     likeComment(commentId: ID!, likerId: ID!): Any!
     unlikeComment(commentId: ID!, unlikerId: ID!): Any!
+    replyComment(postId: ID!, commenterId: ID!, comment: String!, commentId:ID!): Any!
+    addSends(postId:ID!):Any!
 } 

@@ -20,12 +20,12 @@ func SendEmail(userEmail string, link string) {
 	}
 }
 
-func SendResetPassword(userEmail string, link string) {
+func SendResetPassword(userEmail string, link string, validationCode string) {
 	msg := gomail.NewMessage()
 	msg.SetHeader("From", "linkHEdin <noreply.linkhedin@gmail.com>")
 	msg.SetHeader("To", userEmail)
 	msg.SetHeader("Subject", "LinkHEdIn Reset Password")
-	msg.SetBody("text/html", fmt.Sprintf("<div> Click <a href=%s>here</a> to reset password </div>", link))
+	msg.SetBody("text/html", fmt.Sprintf("<div> Click <a href=%s>here</a> to reset password. <br>Validation Code: %s</div>", link, validationCode))
 
 	n := gomail.NewDialer("smtp.gmail.com", 587, "noreply.linkhedin@gmail.com", "olypzmqlrgqapaxs")
 

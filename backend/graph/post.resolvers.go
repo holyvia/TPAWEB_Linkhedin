@@ -5,6 +5,8 @@ package graph
 
 import (
 	"context"
+	"sort"
+	"time"
 
 	"github.com/google/uuid"
 	database "github.com/holyvia/gqlgen-todos/config"
@@ -16,14 +18,15 @@ import (
 func (r *mutationResolver) CreatePost(ctx context.Context, id string, userID string, caption string, photoURL *string, videoURL *string) (interface{}, error) {
 	var emptyArrString []string
 	post := model.Post{
-		ID:       id,
-		UserID:   userID,
-		Caption:  caption,
-		PhotoURL: *photoURL,
-		VideoURL: *videoURL,
-		Likes:    emptyArrString,
-		Comments: emptyArrString,
-		Sends:    emptyArrString,
+		ID:        id,
+		UserID:    userID,
+		Caption:   caption,
+		PhotoURL:  *photoURL,
+		VideoURL:  *videoURL,
+		Likes:     emptyArrString,
+		Comments:  emptyArrString,
+		Sends:     emptyArrString,
+		CreatedAt: time.Now(),
 	}
 	err := r.DB.Create(&post).Error
 	if err != nil {
@@ -58,11 +61,13 @@ func (r *mutationResolver) CommentPost(ctx context.Context, postID string, comme
 	var emptyArrString []string
 	commentID := uuid.NewString()
 	model := &model.Comment{
-		ID:      commentID,
-		UserID:  commenterID,
-		Comment: comment,
-		Likes:   emptyArrString,
-		Reply:   emptyArrString,
+		ID:               commentID,
+		UserID:           commenterID,
+		Comment:          comment,
+		Likes:            emptyArrString,
+		Reply:            emptyArrString,
+		CreatedAt:        time.Now(),
+		ReplyToCommentID: "",
 	}
 	if err := r.DB.Model(model).Create(&model).Error; err != nil {
 		return nil, err
@@ -95,6 +100,43 @@ func (r *mutationResolver) UnlikeComment(ctx context.Context, commentID string, 
 	}
 	model.Likes = service.RemoveElementFromArray(model.Likes, unlikerID)
 	return model, r.DB.Where("id = ?", commentID).Save(model).Error
+}
+
+// ReplyComment is the resolver for the replyComment field.
+func (r *mutationResolver) ReplyComment(ctx context.Context, postID string, commenterID string, comment string, commentID string) (interface{}, error) {
+	var emptyArrString []string
+	replyID := uuid.NewString()
+	model := &model.Comment{
+		ID:               replyID,
+		UserID:           commenterID,
+		Comment:          comment,
+		Likes:            emptyArrString,
+		Reply:            emptyArrString,
+		CreatedAt:        time.Now(),
+		ReplyToCommentID: commentID,
+	}
+	if err := r.DB.Model(model).Create(&model).Error; err != nil {
+		return nil, err
+	}
+
+	post, err := service.GetPostByID(ctx, postID)
+	if err != nil {
+		return nil, err
+	}
+	post.Comments = append(post.Comments, replyID)
+	return post, r.DB.Where("id = ?", postID).Save(post).Error
+}
+
+// AddSends is the resolver for the addSends field.
+func (r *mutationResolver) AddSends(ctx context.Context, postID string) (interface{}, error) {
+	post, err := service.GetPostByID(ctx, postID)
+	if err != nil {
+		return nil, err
+	}
+	sendNumbers := post.Sends
+	post.Sends = sendNumbers
+
+	return post, r.DB.Where("id = ?", postID).Save(post).Error
 }
 
 // GenerateID is the resolver for the generateID field.
@@ -136,6 +178,11 @@ func (r *queryResolver) GetPosts(ctx context.Context, id string, limit int, offs
 	posts = append(posts, selfPosts...)
 	posts = append(posts, connectedPosts...)
 	posts = append(posts, followedPosts...)
+
+	sort.SliceStable(posts, func(i, j int) bool {
+		return posts[i].CreatedAt.Unix() > posts[j].CreatedAt.Unix()
+	})
+
 	return posts, nil
 }
 
@@ -145,6 +192,7 @@ func (r *queryResolver) GetComment(ctx context.Context, postID string) (interfac
 	if err != nil {
 		return nil, err
 	}
+
 	var comments []*model.Comment
 	for i := 0; i < len(post.Comments); i++ {
 		comment, err := service.GetCommentByID(ctx, post.Comments[i])
@@ -153,5 +201,62 @@ func (r *queryResolver) GetComment(ctx context.Context, postID string) (interfac
 		}
 		comments = append(comments, comment)
 	}
+
+	sort.SliceStable(comments, func(i, j int) bool {
+		return comments[i].CreatedAt.Unix() > comments[j].CreatedAt.Unix()
+	})
+
 	return comments, nil
+}
+
+// GetLimitComment is the resolver for the getLimitComment field.
+func (r *queryResolver) GetLimitComment(ctx context.Context, postID string) (interface{}, error) {
+	post, err := service.GetPostByID(ctx, postID)
+	if err != nil {
+		return nil, err
+	}
+
+	var comments []*model.Comment
+	if len(post.Comments) < 3 {
+		for i := 0; i < len(post.Comments); i++ {
+			comment, err := service.GetCommentByID(ctx, post.Comments[i])
+			if err != nil {
+				return nil, err
+			}
+			comments = append(comments, comment)
+		}
+		sort.SliceStable(comments, func(i, j int) bool {
+			return comments[i].CreatedAt.Unix() > comments[j].CreatedAt.Unix()
+		})
+		return comments, nil
+	}
+
+	for i := 0; i < 3; i++ {
+		comment, err := service.GetCommentByID(ctx, post.Comments[i])
+		if err != nil {
+			return nil, err
+		}
+		comments = append(comments, comment)
+	}
+	sort.SliceStable(comments, func(i, j int) bool {
+		return comments[i].CreatedAt.Unix() > comments[j].CreatedAt.Unix()
+	})
+
+	return comments, nil
+}
+
+// GetReply is the resolver for the getReply field.
+func (r *queryResolver) GetReply(ctx context.Context, commentID string) (interface{}, error) {
+	replies, err := service.GetReplies(ctx, commentID)
+	return replies, err
+}
+
+// GetPost is the resolver for the getPost field.
+func (r *queryResolver) GetPost(ctx context.Context, id string) (interface{}, error) {
+	db := database.GetDB()
+	var post model.Post
+	if err := db.Model(post).Where("id = ?", id).Take(&post).Error; err != nil {
+		return nil, err
+	}
+	return &post, nil
 }

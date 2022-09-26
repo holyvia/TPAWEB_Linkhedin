@@ -77,6 +77,21 @@ func (r *mutationResolver) RemoveRequest(ctx context.Context, id string, removed
 	return service.RemoveRequest(ctx, id, removedRequestID)
 }
 
+// ViewUser is the resolver for the viewUser field.
+func (r *mutationResolver) ViewUser(ctx context.Context, id string, viewedID string) (interface{}, error) {
+	return service.ViewUserFunc(ctx, id, viewedID)
+}
+
+// BlockUser is the resolver for the blockUser field.
+func (r *mutationResolver) BlockUser(ctx context.Context, id string, blockedID string) (interface{}, error) {
+	return service.BlockUser(ctx, id, blockedID)
+}
+
+// UnblockUser is the resolver for the unblockUser field.
+func (r *mutationResolver) UnblockUser(ctx context.Context, id string, unblockedID string) (interface{}, error) {
+	return service.UnblockUser(ctx, id, unblockedID)
+}
+
 // User is the resolver for the user field.
 func (r *queryResolver) User(ctx context.Context, id string) (interface{}, error) {
 	return service.UserGetByID(ctx, id)
@@ -100,6 +115,28 @@ func (r *queryResolver) Protected(ctx context.Context) (string, error) {
 // UserYouMightKnow is the resolver for the userYouMightKnow field.
 func (r *queryResolver) UserYouMightKnow(ctx context.Context, id string) (interface{}, error) {
 	return service.GetUserYouMightKnow(ctx, id)
+}
+
+// GetConnectUser is the resolver for the getConnectUser field.
+func (r *queryResolver) GetConnectUser(ctx context.Context, id string) (interface{}, error) {
+	var users []*model.User
+	userNow, err := service.UserGetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	for i := 0; i < len(userNow.ConnectedUser); i++ {
+		userFriend, err := service.UserGetByID(ctx, userNow.ConnectedUser[i])
+		if err != nil {
+			return nil, err
+		}
+		users = append(users, userFriend)
+	}
+	return users, nil
+}
+
+// GetBlockedUser is the resolver for the getBlockedUser field.
+func (r *queryResolver) GetBlockedUser(ctx context.Context, id string) (interface{}, error) {
+	panic(fmt.Errorf("not implemented"))
 }
 
 // Mutation returns generated.MutationResolver implementation.

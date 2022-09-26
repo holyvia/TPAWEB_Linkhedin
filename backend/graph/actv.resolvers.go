@@ -16,7 +16,7 @@ func (r *mutationResolver) CreateLink(ctx context.Context, userID string) (strin
 	link := &model.ActivationLink{
 		ID:     id,
 		UserID: userID,
-		Link:   "http://127.0.0.1:5173/activate/" + id,
+		Link:   "http://localhost:5173/activate/" + id,
 	}
 
 	err := r.DB.Create(link).Error

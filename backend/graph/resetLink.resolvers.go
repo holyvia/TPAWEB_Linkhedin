@@ -5,7 +5,6 @@ package graph
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/holyvia/gqlgen-todos/graph/model"
@@ -18,24 +17,26 @@ func (r *mutationResolver) CreateResetLink(ctx context.Context, userEmail string
 
 	user, err := service.GetUserByEmail(ctx, userEmail)
 
+	validationCode, err := service.GenerateValidation(ctx)
 	if err != nil {
 		return "Error", err
 	}
 	link := &model.ResetLink{
-		ID:     id,
-		UserID: user.ID,
-		Link:   "http://127.0.0.1:5173/resetpass/" + id,
+		ID:             id,
+		UserID:         user.ID,
+		Link:           "http://localhost:5173/validationcode/" + id,
+		ValidationCode: validationCode,
 	}
 
 	if err := r.DB.Create(link).Error; err != nil {
 		return "Error", err
 	}
 
-	service.SendResetPassword(user.Email, link.Link)
+	service.SendResetPassword(user.Email, link.Link, link.ValidationCode)
 	return "Success", nil
 }
 
 // GetResetLink is the resolver for the getResetLink field.
 func (r *queryResolver) GetResetLink(ctx context.Context, id string) (*model.ResetLink, error) {
-	panic(fmt.Errorf("not implemented"))
+	return service.GetResetLinkFunc(ctx, id)
 }

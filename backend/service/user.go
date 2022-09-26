@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"math/rand"
+	"strconv"
 	"strings"
 
 	"sort"
@@ -21,7 +23,7 @@ func CreateUser(ctx context.Context, newUser model.NewUser) (*model.User, error)
 		Name:           newUser.Name,
 		Email:          strings.ToLower(newUser.Email),
 		Password:       newUser.Password,
-		Validate:       false,
+		Validate:      	false,
 		PhotoProfile:   "",
 		RequestConnect: emptyArrString,
 		FollowedUser:   emptyArrString,
@@ -201,7 +203,7 @@ func SendConnectRequest(ctx context.Context, id string, requestedId string) (int
 	return map[string]interface{}{
 		"userNow":       userNow,
 		"userRequested": userRequested,
-	}, db.Where("id = ?", requestedId).Save(userRequested).Error
+	}, db.Save(userRequested).Error
 }
 
 func AcceptConnectRequest(ctx context.Context, id string, acceptedId string) (interface{}, error) {
@@ -320,6 +322,8 @@ func contains(s []*model.User, str *model.User) bool {
 	return false
 }
 
+
+
 func GetUserYouMightKnow(ctx context.Context, id string) (interface{}, error){
 	var users []*model.User
 	userNow, err := UserGetByID(ctx, id)
@@ -345,4 +349,85 @@ func GetUserYouMightKnow(ctx context.Context, id string) (interface{}, error){
 		}
 	}
 	return users, nil
+}
+
+func GetResetLinkFunc(ctx context.Context, id string)(*model.ResetLink, error){
+	db := database.GetDB()
+	var resetLink *model.ResetLink
+	if err := db.Model(resetLink).Where("id = ?", id).Take(&resetLink).Error; err != nil {
+		return nil, err
+	}
+	return resetLink, nil
+}
+
+func GenerateValidation(ctx context.Context)(string, error){
+	code := "";
+	code = code + strconv.Itoa(rand.Intn(10))
+	code = code + strconv.Itoa(rand.Intn(10))
+	code = code + strconv.Itoa(rand.Intn(10))
+	code = code + strconv.Itoa(rand.Intn(10))
+	return code, nil
+}
+
+func GetConnectedUsersByName(ctx context.Context, id string, name string, limit int, offset int) ([]*model.User, error) {
+	db := database.GetDB()
+	if name == "" {
+		name = "%"
+	}
+
+	var users []*model.User
+	if err := db.Limit(limit).Offset(offset).Find(&users, "LOWER(name) like ?", "%"+strings.ToLower(name)+"%").Error; err != nil {
+		return nil, err
+	}
+
+	var connected_user []*model.User
+
+	user, err := UserGetByID(ctx, id)
+
+	for i := 0; i < len(users); i++{
+		for j:=0 ;j<len(user.ConnectedUser); j++{
+			if users[i].ID == user.ConnectedUser[j]{
+				connected_user = append(connected_user, users[i])
+			}
+		}
+	}
+	
+	return connected_user, err
+}
+
+func ViewUserFunc(ctx context.Context, id string, viewedID string) (interface{}, error){
+	db := database.GetDB()
+	if userViewed, err := UserGetByID(ctx, viewedID); err!=nil{
+		return nil, err
+	}else{
+		for i := 0; i < len(userViewed.ViewProfile); i++{
+			if(userViewed.ViewProfile[i] == id){
+				return nil, err
+			}
+		}
+		userViewed.ViewProfile = append(userViewed.ViewProfile, id)
+	
+		return userViewed, db.Where("id = ?", viewedID).Save(userViewed).Error
+	}
+
+}
+
+func BlockUser(ctx context.Context, id string, blockedId string) (interface{}, error) {
+	db := database.GetDB()
+	model, err := UserGetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	model.BlockedUser = append(model.BlockedUser, blockedId)
+	return model, db.Where("id = ?", id).Save(model).Error
+}
+
+func UnblockUser(ctx context.Context, id string, unblockedId string) (interface{}, error) {
+	db := database.GetDB()
+	model, err := UserGetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	model.BlockedUser = RemoveElementFromArray(model.BlockedUser, unblockedId)
+	return model, db.Where("id = ?", id).Save(model).Error
 }

@@ -5,6 +5,8 @@ package graph
 
 import (
 	"context"
+	"sort"
+	"time"
 
 	database "github.com/holyvia/gqlgen-todos/config"
 	"github.com/holyvia/gqlgen-todos/graph/model"
@@ -19,6 +21,7 @@ func (r *mutationResolver) CreateJobs(ctx context.Context, id string, userID str
 		Company:     company,
 		Position:    position,
 		Description: description,
+		CreatedAt:   time.Now(),
 	}
 	err := r.DB.Create(&job).Error
 	if err != nil {
@@ -35,5 +38,10 @@ func (r *queryResolver) GetJobs(ctx context.Context, limit int, offset int) (int
 	if err := db.Limit(limit).Offset(offset).Find(&jobs).Error; err != nil {
 		return nil, err
 	}
+
+	sort.SliceStable(jobs, func(i, j int) bool {
+		return jobs[i].CreatedAt.Unix() > jobs[j].CreatedAt.Unix()
+	})
+
 	return jobs, nil
 }

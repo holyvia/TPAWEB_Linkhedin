@@ -14,6 +14,8 @@ type User struct {
 	RequestConnect pq.StringArray `json:"request_connect" gorm:"type:text[]"`
 	ConnectedUser  pq.StringArray `json:"connected_user" gorm:"type:text[]"`
 	PendingRequest  pq.StringArray `json:"pending_request" gorm:"type:text[]"`
+	ViewProfile  pq.StringArray `json:"view_profile" gorm:"type:text[]"`
+	BlockedUser pq.StringArray `json:"blocked_user" gorm:"type:text[]"`
 	BackgroundPhoto string         `json:"background_photo"`
 	PhotoProfile   string         `json:"photo_profile"`
 	Education      string         `json:"education"`

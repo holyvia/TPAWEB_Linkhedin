@@ -5,4 +5,5 @@ type ResetLink struct {
 	UserID string `json:"userId"`
 	UserEmail string `json:"userEmail"`
 	Link   string `json:"link"`
+	ValidationCode string `json:"validationCode"`
 }

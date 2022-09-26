@@ -45,6 +45,8 @@ func main() {
 	db.AutoMigrate(&model.Comment{})
 	db.AutoMigrate(&model.Post{})
 	db.AutoMigrate(&model.Job{})
+	db.AutoMigrate(&model.Experience{})
+	db.AutoMigrate(&model.Education{})
 
 	c := generated.Config{Resolvers: &graph.Resolver{
 		DB: db,

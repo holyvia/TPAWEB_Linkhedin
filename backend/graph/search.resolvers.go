@@ -22,7 +22,38 @@ func (r *queryResolver) Search(ctx context.Context, keyword string, limit int, o
 		return nil, err
 	}
 	search.Users = users
+	posts, err := service.GetPostByCaption(ctx, keyword, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	search.Posts = posts
+	return search, nil
+}
 
+// Searchpost is the resolver for the searchpost field.
+func (r *queryResolver) Searchpost(ctx context.Context, keyword string, limit int, offset int) ([]*model.Post, error) {
+	var searchpost *model.Searchpost
+	searchpost = &model.Searchpost{}
+
+	posts, err := service.GetPostByCaption(ctx, keyword, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	searchpost.Posts = posts
+
+	return posts, nil
+}
+
+// SearchConnect is the resolver for the searchConnect field.
+func (r *queryResolver) SearchConnect(ctx context.Context, id string, keyword string, limit int, offset int) (interface{}, error) {
+	var search *model.Search
+	search = &model.Search{}
+
+	users, err := service.GetConnectedUsersByName(ctx, id, keyword, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	search.Users = users
 	return search, nil
 }
 
